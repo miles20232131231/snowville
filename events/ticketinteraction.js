@@ -8,6 +8,7 @@ module.exports = {
         const logChannelId = '1284792138177187843'; // Log channel ID
         const logChannel = interaction.guild?.channels.cache.get(logChannelId);
         const ticketCategoryId = '1284817802636824576'; // Tickets category ID
+        const staffRoleId = '1284792046074331136'; // General staff role ID for most tickets
 
         try {
             if (interaction.isStringSelectMenu()) {
@@ -22,15 +23,15 @@ module.exports = {
                     switch (ticketType) {
                         case 'general_support':
                             channelName = 'generalsupport';
-                            mentionId = '1284792046074331136';
+                            mentionId = staffRoleId; // Use the staff role ID
                             break;
                         case 'civilian_report':
                             channelName = 'civilian report';
-                            mentionId = '1284792046074331136';
+                            mentionId = staffRoleId; // Use the staff role ID
                             break;
                         case 'staff_report':
                             channelName = 'staff report';
-                            mentionId = '1284792038231113758';
+                            mentionId = '1284792038231113758'; // Specific staff role for staff report
                             break;
                         default:
                             channelName = 'ticket';
@@ -78,7 +79,7 @@ module.exports = {
                     }
 
                     // Send initial message to the ticket channel
-                    const openTime = Math.floor(Date.now() / 1000); // Define openTime here
+                    const openTime = Math.floor(Date.now() / 1000);
 
                     const embed = new EmbedBuilder()
                         .setTitle('Snowville | Ticket')
@@ -205,8 +206,7 @@ module.exports = {
                 }
             }
         } catch (error) {
-            console.error('Unexpected error during interaction handling:', error.message);
-            // Do not log error details if you do not want to log them
+            console.error('Error handling interaction:', error);
         }
     },
 };
