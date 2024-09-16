@@ -21,7 +21,6 @@ module.exports = {
                     let mentionId = '';
                     let allowedRoleId = ''; // This will store the allowed role ID for the specific ticket type
 
-                    // Determine the channel name, mention ID, and allowed role based on the ticket type
                     switch (ticketType) {
                         case 'general_support':
                             channelName = 'generalsupport';
@@ -45,10 +44,8 @@ module.exports = {
                             break;
                     }
 
-                    // Find the ticket category by ID
                     const ticketCategory = interaction.guild.channels.cache.get(ticketCategoryId);
                     if (!ticketCategory || ticketCategory.type !== ChannelType.GuildCategory) {
-                        // Handle the case where the category is not found or is not a category
                         if (logChannel) {
                             const errorEmbed = new EmbedBuilder()
                                 .setTitle('Ticket Category Not Found')
@@ -61,7 +58,6 @@ module.exports = {
                         return;
                     }
 
-                    // Create a new channel for the ticket with the correct permissions
                     const ticketChannel = await interaction.guild.channels.create({
                         name: `${channelName}-${interaction.user.username}`,
                         type: ChannelType.GuildText,
@@ -83,12 +79,10 @@ module.exports = {
                         ],
                     });
 
-                    // Ping the appropriate role before sending the embed
                     if (mentionId) {
                         await ticketChannel.send(`<@&${mentionId}>`);
                     }
 
-                    // Send initial message to the ticket channel
                     const openTime = Math.floor(Date.now() / 1000);
 
                     const embed = new EmbedBuilder()
@@ -112,6 +106,33 @@ module.exports = {
                     await interaction.editReply({ content: `Your ticket has been created: ${ticketChannel}`, ephemeral: true });
                 }
             }
+
+            // Handle ticket close button interaction
+            if (interaction.isButton()) {
+                if (interaction.customId === 'close_ticket') {
+                    const ticketChannel = interaction.channel;
+
+                    if (ticketChannel) {
+                        const closeTime = Math.floor(Date.now() / 1000);
+
+                        const closeEmbed = new EmbedBuilder()
+                            .setTitle('Ticket Closed')
+                            .setDescription(`This ticket has been closed by ${interaction.user}.
+                                Close Time: <t:${closeTime}:f>`)
+                            .setColor('#ff0000');
+
+                        await ticketChannel.send({ embeds: [closeEmbed] });
+
+                        // Wait 5 seconds before deleting the channel
+                        setTimeout(() => {
+                            ticketChannel.delete().catch(console.error);
+                        }, 5000);
+
+                        await interaction.reply({ content: 'Ticket will be closed in 5 seconds.', ephemeral: true });
+                    }
+                }
+            }
+
         } catch (error) {
             console.error('Error handling interaction:', error);
         }
