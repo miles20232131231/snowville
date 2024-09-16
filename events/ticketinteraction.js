@@ -8,7 +8,8 @@ module.exports = {
         const logChannelId = '1284792138177187843'; // Log channel ID
         const logChannel = interaction.guild?.channels.cache.get(logChannelId);
         const ticketCategoryId = '1284817802636824576'; // Tickets category ID
-        const staffRoleId = '1284792046074331136'; // General staff role ID for most tickets
+        const generalStaffRoleId = '1284792046074331136'; // General staff role ID for most tickets
+        const staffReportRoleId = '1284792038231113758'; // Staff report role ID
 
         try {
             if (interaction.isStringSelectMenu()) {
@@ -18,30 +19,36 @@ module.exports = {
                     const ticketType = interaction.values[0]; // Get the selected ticket type
                     let channelName = '';
                     let mentionId = '';
+                    let allowedRoleId = ''; // This will store the allowed role ID for the specific ticket type
 
-                    // Determine the channel name and mention ID based on the ticket type
+                    // Determine the channel name, mention ID, and allowed role based on the ticket type
                     switch (ticketType) {
                         case 'general_support':
                             channelName = 'generalsupport';
-                            mentionId = staffRoleId; // Use the staff role ID
+                            mentionId = generalStaffRoleId;
+                            allowedRoleId = generalStaffRoleId; // Allow general staff role
                             break;
                         case 'civilian_report':
-                            channelName = 'civilian report';
-                            mentionId = staffRoleId; // Use the staff role ID
+                            channelName = 'civilian-report';
+                            mentionId = generalStaffRoleId;
+                            allowedRoleId = generalStaffRoleId; // Allow general staff role
                             break;
                         case 'staff_report':
-                            channelName = 'staff report';
-                            mentionId = '1284792038231113758'; // Specific staff role for staff report
+                            channelName = 'staff-report';
+                            mentionId = staffReportRoleId;
+                            allowedRoleId = staffReportRoleId; // Allow specific staff role for staff reports
                             break;
                         default:
                             channelName = 'ticket';
-                            mentionId = ''; // Default mention ID if needed
+                            mentionId = '';
+                            allowedRoleId = ''; // No specific role allowed for default
                             break;
                     }
 
                     // Find the ticket category by ID
                     const ticketCategory = interaction.guild.channels.cache.get(ticketCategoryId);
                     if (!ticketCategory || ticketCategory.type !== ChannelType.GuildCategory) {
+                        // Handle the case where the category is not found or is not a category
                         if (logChannel) {
                             const errorEmbed = new EmbedBuilder()
                                 .setTitle('Ticket Category Not Found')
@@ -54,7 +61,7 @@ module.exports = {
                         return;
                     }
 
-                    // Create a new channel for the ticket with staff role permissions
+                    // Create a new channel for the ticket with the correct permissions
                     const ticketChannel = await interaction.guild.channels.create({
                         name: `${channelName}-${interaction.user.username}`,
                         type: ChannelType.GuildText,
@@ -63,16 +70,16 @@ module.exports = {
                         permissionOverwrites: [
                             {
                                 id: interaction.guild.id,
-                                deny: [PermissionsBitField.Flags.ViewChannel],
+                                deny: [PermissionsBitField.Flags.ViewChannel], // Deny everyone by default
                             },
                             {
                                 id: interaction.user.id,
-                                allow: [PermissionsBitField.Flags.ViewChannel],
+                                allow: [PermissionsBitField.Flags.ViewChannel], // Allow the ticket opener
                             },
                             {
-                                id: staffRoleId, // Allow staff role to view and manage the ticket
-                                allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ManageMessages],
-                            },
+                                id: allowedRoleId,
+                                allow: [PermissionsBitField.Flags.ViewChannel], // Allow the specific staff role
+                            }
                         ],
                     });
 
