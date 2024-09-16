@@ -1,11 +1,9 @@
 const { Events, PermissionsBitField, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
 
 module.exports = {
     name: Events.InteractionCreate,
     async execute(interaction) {
-        const logChannelId = '1284792138177187843'; // Log channel ID
+        const logChannelId = '1284792138177187843'; // Log channel ID for error reporting
         const logChannel = interaction.guild?.channels.cache.get(logChannelId);
         const ticketCategoryId = '1284817802636824576'; // Tickets category ID
         const generalStaffRoleId = '1284792046074331136'; // General staff role ID for most tickets
@@ -124,8 +122,22 @@ module.exports = {
                         await ticketChannel.send({ embeds: [closeEmbed] });
 
                         // Wait 5 seconds before deleting the channel
-                        setTimeout(() => {
-                            ticketChannel.delete().catch(console.error);
+                        setTimeout(async () => {
+                            try {
+                                await ticketChannel.delete();
+                            } catch (deleteError) {
+                                // Log the error in the log channel if deletion fails
+                                const errorEmbed = new EmbedBuilder()
+                                    .setTitle('Ticket Closure Error')
+                                    .setDescription(`An error occurred while trying to delete the ticket channel.\n\n**Error:** ${deleteError.message}`)
+                                    .setColor('#ff0000');
+
+                                if (logChannel) {
+                                    await logChannel.send({ embeds: [errorEmbed] });
+                                }
+
+                                console.error('Error deleting ticket channel:', deleteError);
+                            }
                         }, 5000);
 
                         await interaction.reply({ content: 'Ticket will be closed in 5 seconds.', ephemeral: true });
@@ -134,6 +146,16 @@ module.exports = {
             }
 
         } catch (error) {
+            // Log any unexpected errors in the log channel
+            const errorEmbed = new EmbedBuilder()
+                .setTitle('Interaction Error')
+                .setDescription(`An error occurred during interaction handling.\n\n**Error:** ${error.message}`)
+                .setColor('#ff0000');
+
+            if (logChannel) {
+                await logChannel.send({ embeds: [errorEmbed] });
+            }
+
             console.error('Error handling interaction:', error);
         }
     },
