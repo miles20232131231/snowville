@@ -42,7 +42,6 @@ module.exports = {
                     // Find the ticket category by ID
                     const ticketCategory = interaction.guild.channels.cache.get(ticketCategoryId);
                     if (!ticketCategory || ticketCategory.type !== ChannelType.GuildCategory) {
-                        // Handle the case where the category is not found or is not a category
                         if (logChannel) {
                             const errorEmbed = new EmbedBuilder()
                                 .setTitle('Ticket Category Not Found')
@@ -55,7 +54,7 @@ module.exports = {
                         return;
                     }
 
-                    // Create a new channel for the ticket
+                    // Create a new channel for the ticket with staff role permissions
                     const ticketChannel = await interaction.guild.channels.create({
                         name: `${channelName}-${interaction.user.username}`,
                         type: ChannelType.GuildText,
@@ -69,6 +68,10 @@ module.exports = {
                             {
                                 id: interaction.user.id,
                                 allow: [PermissionsBitField.Flags.ViewChannel],
+                            },
+                            {
+                                id: staffRoleId, // Allow staff role to view and manage the ticket
+                                allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ManageMessages],
                             },
                         ],
                     });
@@ -100,109 +103,6 @@ module.exports = {
                     await ticketChannel.send({ embeds: [embed], components: [row] });
 
                     await interaction.editReply({ content: `Your ticket has been created: ${ticketChannel}`, ephemeral: true });
-                }
-            } else if (interaction.isButton()) {
-                if (interaction.customId === 'close_ticket') {
-                    // Ensure interaction is deferred before further processing
-                    if (!interaction.replied) {
-                        await interaction.deferReply(); // Defer reply to ensure timely response
-                    }
-
-                    // Extract open time from channel topic
-                    const channelTopic = interaction.channel?.topic || '';
-                    const openTimeStr = channelTopic.split(' | ')[1]?.split('Opened at: ')[1];
-                    const openTime = openTimeStr ? parseInt(openTimeStr) : Math.floor(Date.now() / 1000);
-                    const closeTime = Math.floor(Date.now() / 1000);
-
-                    // Extract user ID from channel topic
-                    const userId = channelTopic.split('Created by: ')[1]?.split(' | ')[0];
-                    if (!userId) {
-                        await interaction.editReply({ content: 'Failed to extract user ID from channel topic.', ephemeral: true });
-                        return;
-                    }
-
-                    const transcriptsDir = path.join(__dirname, 'transcripts');
-                    if (!fs.existsSync(transcriptsDir)) {
-                        fs.mkdirSync(transcriptsDir, { recursive: true });
-                    }
-
-                    const messages = await interaction.channel?.messages.fetch();
-                    const transcript = 
-                    `<html>
-                    <head>
-                        <meta charSet="utf-8"/>
-                        <meta name="viewport" content="width=device-width, initial-scale=1"/>
-                        <title>${interaction.channel?.name}</title>
-                        <style>
-                            body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #36393f; color: white; }
-                            .container { max-width: 900px; margin: 0 auto; padding: 20px; background-color: #2f3136; border-radius: 8px; }
-                            .message { padding: 10px; border-bottom: 1px solid #444; }
-                            .author { font-weight: bold; }
-                            .timestamp { color: #72767d; font-size: 0.8em; }
-                            .content { white-space: pre-wrap; }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="container">
-                            <h1>${interaction.channel?.name}</h1>
-                            <p>Opened by: <@${userId}> at <t:${openTime}:f></p>
-                            <p>Closed by: <@${interaction.user.id}> at <t:${closeTime}:f></p>
-                            <h2>Messages</h2>
-                            ${messages?.map(message => 
-                                `<div class="message">
-                                    <div class="author">${message.author.username} (${message.author.id})</div>
-                                    <div class="timestamp"><t:${Math.floor(message.createdTimestamp / 1000)}:f></div>
-                                    <div class="content">${message.content}</div>
-                                </div>`
-                            ).join('')}
-                        </div>
-                    </body>
-                    </html>`;
-
-                    const transcriptPath = path.join(transcriptsDir, `${interaction.channel.id}.html`);
-                    fs.writeFileSync(transcriptPath, transcript);
-
-                    // Notify the user via DM
-                    try {
-                        const user = await interaction.client.users.fetch(userId);
-                        const userDM = await user.createDM();
-                        const dmEmbed = new EmbedBuilder()
-                            .setTitle('Ticket Closed')
-                            .setDescription('Thank you for opening a ticket. Above you can find your ticket transcript.')
-                            .addFields(
-                                { name: 'Open Time', value: `<t:${openTime}:f>` },
-                                { name: 'Close Time', value: `<t:${closeTime}:f>` },
-                                { name: 'Closed by', value: `<@${interaction.user.id}>` }
-                            )
-                            .setColor('#f3ca9a');
-
-                        await userDM.send({ embeds: [dmEmbed], files: [transcriptPath] });
-                    } catch (dmError) {
-                        console.warn('Error sending DM to user:', dmError.message);
-                    }
-
-                    // Delete the ticket channel
-                    try {
-                        await interaction.channel.delete();
-                    } catch (deleteError) {
-                        console.error('Error deleting ticket channel:', deleteError);
-                    }
-
-                    // Log ticket closure details
-                    if (logChannel) {
-                        const logEmbed = new EmbedBuilder()
-                            .setTitle('Ticket Closed')
-                            .setDescription(`Ticket channel ${interaction.channel.name} has been closed.`)
-                            .addFields(
-                                { name: 'Opened by', value: `<@${userId}>` },
-                                { name: 'Closed by', value: `<@${interaction.user.id}>` },
-                                { name: 'Open Time', value: `<t:${openTime}:f>` },
-                                { name: 'Close Time', value: `<t:${closeTime}:f>` }
-                            )
-                            .setColor('#f3ca9a');
-
-                        await logChannel.send({ embeds: [logEmbed] });
-                    }
                 }
             }
         } catch (error) {
