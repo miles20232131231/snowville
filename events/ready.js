@@ -9,7 +9,7 @@ module.exports = {
         const statuses = [
             {
                 type: ActivityType.Watching,
-                name: 'running updates',
+                name: 'snowville',
                 status: 'online'
             }
         ];
