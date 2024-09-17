@@ -1,6 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionsBitField } = require('discord.js');
-const path = require('path');
-const fs = require('fs');
+const { SlashCommandBuilder, EmbedBuilder, PermissionsBitField, ButtonBuilder, ActionRowBuilder, ButtonStyle } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -14,7 +12,6 @@ module.exports = {
     async execute(interaction) {
         const reactions = interaction.options.getInteger('reactions');
         const user = interaction.user;
-        const now = new Date();
 
         const embed = new EmbedBuilder()
             .setTitle('Snowville | Session Startup')
@@ -30,27 +27,25 @@ This session will commence once this message receives ${reactions} or more react
                 iconURL: 'https://cdn.discordapp.com/attachments/1284485057058439168/1284788237944098866/image.png?ex=66e7e7ca&is=66e6964a&hm=874b1fcc1f468acee240ec19f361cb474f6b31913e309d36a00365efcb6bb084&'
             });
 
+        // Create the "Banned Vehicle List" button (Primary)
+        const bannedVehicleButton = new ButtonBuilder()
+            .setCustomId('bannedVehicleList')
+            .setLabel('Banned Vehicle List')
+            .setStyle(ButtonStyle.Primary);
+
+        // Create action row to hold the button
+        const row = new ActionRowBuilder()
+            .addComponents(bannedVehicleButton);
+
         const message = await interaction.channel.send({
             content: '@everyone',
-            embeds: [embed]
+            embeds: [embed],
+            components: [row]  // Add the primary button to the message
         });
 
         await message.react('✅');
 
-        const newEmbed = new EmbedBuilder()
-            .setTitle("Session Startup")
-            .setDescription(`<@${interaction.user.id}> has initiated a roleplay session. The reactions have been set to ${reactions}.
-                
-                Command used in <#${interaction.channel.id}>`)
-            .setColor(`#f3ca9a`)
-            .setFooter({
-                text: 'Snowville',
-                iconURL: 'https://cdn.discordapp.com/attachments/1284485057058439168/1284788237944098866/image.png?ex=66e7e7ca&is=66e6964a&hm=874b1fcc1f468acee240ec19f361cb474f6b31913e309d36a00365efcb6bb084&'
-            });
-
-        const targetChannel = await interaction.client.channels.fetch('1284792138177187843');
-        await targetChannel.send({ embeds: [newEmbed] });
-
+        // Handle reactions and session startup
         const reactionFilter = (reaction, user) => reaction.emoji.name === '✅';
         const reactionCollector = message.createReactionCollector({ filter: reactionFilter, time: 86400000 });
 
@@ -71,4 +66,15 @@ This session will commence once this message receives ${reactions} or more react
 
         await interaction.reply({ content: `You have initiated a session successfully.`, ephemeral: true });
     },
+};
+
+// Handle button interactions separately
+module.exports.handleInteraction = async (interaction) => {
+    if (interaction.isButton() && interaction.customId === 'bannedVehicleList') {
+        // Send the Google Docs link when the button is clicked
+        await interaction.reply({
+            content: 'Here is the banned vehicle list document: https://docs.google.com/document/d/1hNoYMil7oEzHnIwUxXbAmop43zf8aoWQuA8T8WKQFlQ/edit?usp=sharing',
+            ephemeral: true  // Only the user who clicked the button will see this message
+        });
+    }
 };
